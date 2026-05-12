@@ -1,13 +1,19 @@
-import pandas as pd
-import smtplib
-from email.message import EmailMessage
+import html
 import os
 import random
+import re
+import smtplib
 import time
+from email.message import EmailMessage
+from pathlib import Path
+
+import pandas as pd
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 # =========================
 # CONFIGURATION
@@ -31,10 +37,75 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 MIN_EMAIL_DELAY_SEC = float(os.getenv("MIN_EMAIL_DELAY_SEC", "15"))
 MAX_EMAIL_DELAY_SEC = float(os.getenv("MAX_EMAIL_DELAY_SEC", "30"))
 
+EMAIL_TEMPLATE_DIR = os.getenv("EMAIL_TEMPLATE_DIR", "templates").strip()
+EMAIL_TEMPLATE = os.getenv("EMAIL_TEMPLATE", "default").strip()
+
+# Fallback values when a {{PLACEHOLDER}} is not set in .env (Excel wins for HR_NAME / COMPANY)
+TEMPLATE_ENV_DEFAULTS = {
+    "CONTACT_NAME": "Shivani Khare",
+    "CONTACT_PHONE": "8109166735",
+    "CONTACT_EMAIL": "shivanikhare0001@gmail.com",
+}
+
 if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
     raise SystemExit(
         "Missing EMAIL_ADDRESS or EMAIL_PASSWORD. Copy .env.example to .env and set them."
     )
+
+# =========================
+# EMAIL TEMPLATES (HTML + optional plain)
+# =========================
+
+PLACEHOLDER_PATTERN = re.compile(r"\{\{([A-Za-z0-9_]+)\}\}")
+
+
+def _template_env_value(key: str) -> str:
+    v = os.getenv(key, "").strip()
+    if v:
+        return v
+    return TEMPLATE_ENV_DEFAULTS.get(key, "")
+
+
+def render_email_template(template: str, hr_name: str, company: str, *, escape_html: bool) -> str:
+    """Replace {{HR_NAME}}, {{COMPANY}}, and any {{NAME}} with matching environment variables."""
+
+    def repl(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key == "HR_NAME":
+            val = hr_name
+        elif key == "COMPANY":
+            val = company
+        else:
+            val = _template_env_value(key)
+        if escape_html:
+            return html.escape(val or "", quote=False)
+        return val or ""
+
+    return PLACEHOLDER_PATTERN.sub(repl, template)
+
+
+def _html_to_plain_fallback(rendered_html: str) -> str:
+    t = re.sub(r"<br\s*/?>", "\n", rendered_html, flags=re.I)
+    t = re.sub(r"</(p|h[1-6]|div|li|tr)>", "\n", t, flags=re.I)
+    t = re.sub(r"<[^>]+>", "", t)
+    t = html.unescape(t)
+    return "\n".join(line.strip() for line in t.splitlines() if line.strip())
+
+
+_templates_root = Path(EMAIL_TEMPLATE_DIR)
+if not _templates_root.is_absolute():
+    _templates_root = SCRIPT_DIR / _templates_root
+
+_html_path = _templates_root / f"{EMAIL_TEMPLATE}.html"
+_plain_path = _templates_root / f"{EMAIL_TEMPLATE}.plain.txt"
+
+if not _html_path.is_file():
+    raise SystemExit(f"Missing HTML template file: {_html_path}")
+
+HTML_TEMPLATE_SOURCE = _html_path.read_text(encoding="utf-8")
+PLAIN_TEMPLATE_SOURCE = (
+    _plain_path.read_text(encoding="utf-8") if _plain_path.is_file() else None
+)
 
 # =========================
 # READ EXCEL FILE
@@ -64,53 +135,15 @@ for index, row in df.iterrows():
     if hr_email == "nan" or hr_email.strip() == "":
         continue
 
-    body = f"""
-Good Morning {hr_name},
-
-I hope you are doing well.
-
-I am Shivani Khare, a graduate from National Institute of Technology, Raipur (CGPA: 8.44), currently seeking entry-level opportunities in Data Analytics / Business Analytics at {company}.
-
-During my Data Analyst Internship at PwC (Virtual), I built dashboards and solved real business problems using data, identifying key drivers of customer churn and improving retention strategies.
-
-Additionally, as a Graduate Engineer Trainee at AMNS Surat, I monitored KPIs and analyzed production data to identify operational inefficiencies, gaining hands-on exposure to real-world data applications.
-
-Here are some of my key projects:
-
-1. Pizza Sales Analysis (SQL)
-Video:
-https://www.loom.com/share/ed8f60f9041f4cf698af8396bbd47b1d
-
-2. Cost & Profitability Analysis of Food Delivery (Python)
-- Reduced delivery costs by 15%
-- Improved profit margins by 12%
-
-Video:
-https://www.loom.com/share/4995c2bb080647c3b0dddc86e72d2421
-
-GitHub:
-https://github.com/shivanii-khare/first-project
-
-3. Blinkit Sales Insights Dashboard (Power BI, Excel)
-- Built dashboards tracking sales trends and customer behavior
-- Improved marketing effectiveness by 12%
-
-GitHub:
-https://github.com/shivanii-khare/powberBi-Dashboard
-
-I am particularly interested in roles where I can apply data analysis to solve real-world business problems and contribute to decision-making at {company}.
-
-Please find my resume attached for your reference.
-
-I would really appreciate the opportunity to connect and discuss any relevant openings.
-
-Looking forward to hearing from you.
-
-Regards,
-Shivani Khare
-8109166735
-shivanikhare0001@gmail.com
-"""
+    body_html = render_email_template(
+        HTML_TEMPLATE_SOURCE, hr_name, company, escape_html=True
+    )
+    if PLAIN_TEMPLATE_SOURCE is not None:
+        body_plain = render_email_template(
+            PLAIN_TEMPLATE_SOURCE, hr_name, company, escape_html=False
+        )
+    else:
+        body_plain = _html_to_plain_fallback(body_html)
 
     try:
         msg = EmailMessage()
@@ -119,7 +152,8 @@ shivanikhare0001@gmail.com
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = hr_email
 
-        msg.set_content(body)
+        msg.set_content(body_plain)
+        msg.add_alternative(body_html, subtype="html")
 
         # Attach Resume
         with open(RESUME_FILE, 'rb') as f:

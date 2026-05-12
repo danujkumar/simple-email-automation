@@ -39,7 +39,7 @@ Sends personalized application emails from a Gmail account using contacts listed
 
    Optional overrides (defaults match the comments in `.env.example`):
 
-   `EXCEL_FILE`, `RESUME_FILE`, `SUBJECT`, `SMTP_HOST`, `SMTP_PORT`, `MIN_EMAIL_DELAY_SEC`, `MAX_EMAIL_DELAY_SEC`.
+   `EXCEL_FILE`, `RESUME_FILE`, `SUBJECT`, `SMTP_HOST`, `SMTP_PORT`, `MIN_EMAIL_DELAY_SEC`, `MAX_EMAIL_DELAY_SEC`, `EMAIL_TEMPLATE_DIR`, `EMAIL_TEMPLATE`, and contact fields referenced in templates (`CONTACT_NAME`, `CONTACT_PHONE`, `CONTACT_EMAIL`, or any custom `{{VAR}}`).
 
 5. **Excel file**: place your spreadsheet next to `script.py` (or set `EXCEL_FILE` in `.env`). It must include these columns:
 
@@ -50,6 +50,15 @@ Sends personalized application emails from a Gmail account using contacts listed
    Default filename: **`Email_finder.xlsx`**.
 
 6. **Resume**: add **`resume.pdf`** in the project folder, or set **`RESUME_FILE`** in `.env` to another path.
+
+7. **Email templates**: HTML lives under **`templates/`** (or set **`EMAIL_TEMPLATE_DIR`**). Pick the pair **`templates/<name>.html`** and **`templates/<name>.plain.txt`** with **`EMAIL_TEMPLATE`** (default: **`default`**, i.e. `default.html` + `default.plain.txt`).
+
+   Placeholders use **`{{NAME}}`** syntax:
+
+   - **`{{HR_NAME}}`** and **`{{COMPANY}}`** — filled from the Excel row (**Employee**, **company**).
+   - Any other **`{{VAR}}`** — filled from environment variables (`VAR` in `.env`), or falls back to built-in defaults for **`CONTACT_NAME`**, **`CONTACT_PHONE`**, **`CONTACT_EMAIL`** only.
+
+   Edit the HTML/CSS freely in **`templates/default.html`** or copy it to a new base name and set **`EMAIL_TEMPLATE=my_variant`**. If you omit **`<name>.plain.txt`**, a simple plain-text version is derived by stripping tags from the rendered HTML.
 
 ## Run
 

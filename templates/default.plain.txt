@@ -1,0 +1,45 @@
+Good Morning {{HR_NAME}},
+
+I hope you are doing well.
+
+I am {{CONTACT_NAME}}, a graduate from National Institute of Technology, Raipur (CGPA: 8.44), currently seeking entry-level opportunities in Data Analytics / Business Analytics at {{COMPANY}}.
+
+During my Data Analyst Internship at PwC (Virtual), I built dashboards and solved real business problems using data, identifying key drivers of customer churn and improving retention strategies.
+
+Additionally, as a Graduate Engineer Trainee at AMNS Surat, I monitored KPIs and analyzed production data to identify operational inefficiencies, gaining hands-on exposure to real-world data applications.
+
+Here are some of my key projects:
+
+1. Pizza Sales Analysis (SQL)
+Video:
+https://www.loom.com/share/ed8f60f9041f4cf698af8396bbd47b1d
+
+2. Cost & Profitability Analysis of Food Delivery (Python)
+- Reduced delivery costs by 15%
+- Improved profit margins by 12%
+
+Video:
+https://www.loom.com/share/4995c2bb080647c3b0dddc86e72d2421
+
+GitHub:
+https://github.com/shivanii-khare/first-project
+
+3. Blinkit Sales Insights Dashboard (Power BI, Excel)
+- Built dashboards tracking sales trends and customer behavior
+- Improved marketing effectiveness by 12%
+
+GitHub:
+https://github.com/shivanii-khare/powberBi-Dashboard
+
+I am particularly interested in roles where I can apply data analysis to solve real-world business problems and contribute to decision-making at {{COMPANY}}.
+
+Please find my resume attached for your reference.
+
+I would really appreciate the opportunity to connect and discuss any relevant openings.
+
+Looking forward to hearing from you.
+
+Regards,
+{{CONTACT_NAME}}
+{{CONTACT_PHONE}}
+{{CONTACT_EMAIL}}
