@@ -32,6 +32,7 @@ SUBJECT = os.getenv(
 
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_TIMEOUT_SEC = float(os.getenv("SMTP_TIMEOUT_SEC", "120"))
 
 # Random pause between sends (seconds); varies each time so sending looks less automated
 MIN_EMAIL_DELAY_SEC = float(os.getenv("MIN_EMAIL_DELAY_SEC", "15"))
@@ -114,16 +115,17 @@ PLAIN_TEMPLATE_SOURCE = (
 df = pd.read_excel(EXCEL_FILE)
 
 # =========================
-# SMTP SERVER SETUP
-# =========================
-
-server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-server.starttls()
-server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-
-# =========================
 # SEND EMAILS
 # =========================
+
+
+def send_message_smtp(msg: EmailMessage) -> None:
+    """One connection per send so idle timeouts (e.g. long delays between mails) cannot stale the socket."""
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SEC) as server:
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+
 
 for index, row in df.iterrows():
 
@@ -167,8 +169,7 @@ for index, row in df.iterrows():
             filename=file_name
         )
 
-        # Send Email
-        server.send_message(msg)
+        send_message_smtp(msg)
 
         print(f"✅ Email sent to {hr_name} ({hr_email})")
 
@@ -179,11 +180,5 @@ for index, row in df.iterrows():
     except Exception as e:
         print(f"❌ Failed for {hr_email}")
         print(e)
-
-# =========================
-# CLOSE SERVER
-# =========================
-
-server.quit()
 
 print("\nAll emails processed.")
